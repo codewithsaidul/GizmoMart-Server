@@ -33,6 +33,10 @@ const dbConnect = async () => {
 
     // ============================= Database Collection =============================
     const userCollection = client.db("GizmoMart").collection("users");
+
+
+
+
     // ============================= Product Related API =============================
 
     // ============================== User Related API ===============================
@@ -42,10 +46,10 @@ const dbConnect = async () => {
       const user = req.body;
 
       // Check if user already exists
-      const query = { email: user.email};
+      const query = { email: user.email };
       const existingUser = await userCollection.findOne(query);
-      if(existingUser) {
-        return res.status(400).send({message: "User already exists!"});
+      if (existingUser) {
+        return res.status(400).send({ message: "User already exists!" });
       }
 
       const result = await userCollection.insertOne(user);
@@ -53,6 +57,16 @@ const dbConnect = async () => {
     });
 
 
+
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+      if (!user) {
+        return res.status(404).send({ message: "User not found!" });
+      }
+      res.send(user);
+    });
 
     console.log("Connected to MongoDB!");
   } catch (error) {
