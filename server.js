@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
@@ -35,7 +35,7 @@ const dbConnect = async () => {
     const userCollection = client.db("GizmoMart").collection("users");
 
 
-
+    
 
     // ============================= Product Related API =============================
 
@@ -56,8 +56,14 @@ const dbConnect = async () => {
       res.send(result);
     });
 
+    // Get The All user Data
+    app.get("/users", async (req, res) => {
+      const user = req.body;
+      const result = await userCollection.find(user).toArray();
+      res.send(result);
+    });
 
-
+    // Get Single User Data With Email
     app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email };
@@ -66,6 +72,18 @@ const dbConnect = async () => {
         return res.status(404).send({ message: "User not found!" });
       }
       res.send(user);
+    });
+
+    // Delete a user From DB
+    app.delete("/user/:id", async (req, res) => {
+      const userId = req.params.id;
+      console.log(parseInt(userId));
+      const query = { _id: new ObjectId(userId)}
+      const result = await userCollection.deleteOne(query);
+      if (result.deletedCount === 0) {
+        return res.status(404).send({ message: "User not found!" });
+      }
+      res.send(result);
     });
 
     console.log("Connected to MongoDB!");
