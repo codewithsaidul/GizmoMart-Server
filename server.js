@@ -17,7 +17,6 @@ app.use(express.json());
 // MongoDB configuration
 const url = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lggjuua.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(url, {
   serverApi: {
@@ -32,9 +31,28 @@ const dbConnect = async () => {
   try {
     client.connect();
 
+    // ============================= Database Collection =============================
+    const userCollection = client.db("GizmoMart").collection("users");
     // ============================= Product Related API =============================
 
     // ============================== User Related API ===============================
+
+    // Add a new user to the database
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+
+      // Check if user already exists
+      const query = { email: user.email};
+      const existingUser = await userCollection.findOne(query);
+      if(existingUser) {
+        return res.status(400).send({message: "User already exists!"});
+      }
+
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+
 
     console.log("Connected to MongoDB!");
   } catch (error) {
