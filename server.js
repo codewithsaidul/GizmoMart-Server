@@ -33,7 +33,7 @@ const dbConnect = async () => {
 
     // ============================= Database Collection =============================
     const userCollection = client.db("GizmoMart").collection("users");
-
+    const productCollection = client.db("GizmoMart").collection("products");
 
     
 
@@ -73,6 +73,28 @@ const dbConnect = async () => {
       }
       res.send(user);
     });
+
+    // Update a User Role & Status
+    app.patch("/userUpdate/:id", async (req, res) => {
+      const Id = req.params.id;
+      const userId = parseInt(Id);
+      const updateData = req.body;
+      const role = updateData.role;
+      const status = updateData.status;
+      const updateDoc = {
+        $set: {
+          role,
+          status,
+        }
+      }
+      const query = { _id: new ObjectId(Id)}
+      const result = await userCollection.updateOne(query, updateDoc);
+      if (result.modifiedCount === 0) {
+        return res.status(404).send({ message: "User not found!" });
+      }
+      res.send(result);
+      
+    })
 
     // Delete a user From DB
     app.delete("/user/:id", async (req, res) => {
