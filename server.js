@@ -6,7 +6,7 @@ require("dotenv").config();
 
 const app = express();
 
-const port = process.env.PORT || 4000;
+const port = process.env.PORT || 4001;
 
 // Middleware configuration
 app.use(cors());
@@ -54,6 +54,16 @@ const dbConnect = async () => {
       const products = await productCollection.find(query).toArray();
       res.send(products);
     })
+
+
+    // TODO: Implement Seller Verification
+    // Delete Products From Collection
+    app.delete("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await productCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // ============================== User Related API ===============================
 
