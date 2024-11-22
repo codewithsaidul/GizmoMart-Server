@@ -99,6 +99,13 @@ const dbConnect = async () => {
       res.send(result);
     });
 
+    // Get The All Product Data 
+    app.get("/products", async (req, res) => {
+      const product = req.body;
+      const products = await productCollection.find(product).toArray();
+      res.send(products);
+    });
+
     // TODO: Implement Seller Verification For This API
     // Get Single Product Data using Id
     app.get('/product/:id', async(req, res) => {
