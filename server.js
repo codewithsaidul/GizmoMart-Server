@@ -46,6 +46,15 @@ const dbConnect = async () => {
       res.send(result);
     })
 
+
+    // Get All Product Data for a Specific Seller with Seller Email
+    app.get("/products/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { sellerEmail: email };
+      const products = await productCollection.find(query).toArray();
+      res.send(products);
+    })
+
     // ============================== User Related API ===============================
 
     // Add a new user to the database
