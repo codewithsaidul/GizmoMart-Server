@@ -38,6 +38,13 @@ const dbConnect = async () => {
     
 
     // ============================= Product Related API =============================
+    // TODO: Implement Seller Verification For This API
+    // Add a New Product
+    app.post("/prouct", async (req, res) => {
+      const product = req.body;
+      const result = await productCollection.insertOne(product);
+      res.send(result);
+    })
 
     // ============================== User Related API ===============================
 
@@ -56,6 +63,7 @@ const dbConnect = async () => {
       res.send(result);
     });
 
+    // TODO: Implement Admin Verification For This API
     // Get The All user Data
     app.get("/users", async (req, res) => {
       const user = req.body;
@@ -74,6 +82,7 @@ const dbConnect = async () => {
       res.send(user);
     });
 
+    // TODO: Implement Admin Verification For This API
     // Update a User Role & Status
     app.patch("/userUpdate/:id", async (req, res) => {
       const Id = req.params.id;
@@ -96,6 +105,7 @@ const dbConnect = async () => {
       
     })
 
+    // TODO: Implement Admin Verification For This API
     // Delete a user From DB
     app.delete("/user/:id", async (req, res) => {
       const userId = req.params.id;
