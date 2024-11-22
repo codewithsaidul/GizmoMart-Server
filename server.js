@@ -93,14 +93,46 @@ const dbConnect = async () => {
     // ============================= Product Related API =============================
     // TODO: Implement Seller Verification For This API
     // Add a New Product
-    app.post("/prouct",  verifySeller, async (req, res) => {
+    app.post("/prouct", async (req, res) => {
       const product = req.body;
       const result = await productCollection.insertOne(product);
       res.send(result);
     });
 
+    // TODO: Implement Seller Verification For This API
+    // Get Single Product Data using Id
+    app.get('/product/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const product = await productCollection.findOne(query);
+      res.send(product);
+    })
+
+    // TODO: Implement Seller Verification For This API
+    // Get Single Product for updateing the existing product data
+    app.patch("/products/update/:id", async (req, res) => {
+      const id = req.params.id;
+      const product = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updatedProduct = {
+        $set: {
+          productName: product.productName,
+          productImage: product.productImage,
+          productPrice: product.productPrice,
+          productQuantity: product.productQuantity,
+          productCategory: product.productCategory,
+          productBrand: product.productBrand,
+          productDescription: product.productDescription,
+          sellerEmail: product.sellerEmail,
+          sellerStatus: product.sellerStatus,
+        },
+      };
+      const result = await productCollection.updateOne(query, updatedProduct);
+      res.send(result);
+    });
+
     // Get All Product Data for a Specific Seller with Seller Email
-    app.get("/products/:email",  async (req, res) => {
+    app.get("/products/:email", async (req, res) => {
       const email = req.params.email;
       const query = { sellerEmail: email };
       const products = await productCollection.find(query).toArray();
@@ -143,7 +175,7 @@ const dbConnect = async () => {
 
     // TODO: Implement Admin Verification For This API
     // Get Single User Data With Email
-    app.get("/user/:email",  async (req, res) => {
+    app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const user = await userCollection.findOne(query);
@@ -177,9 +209,8 @@ const dbConnect = async () => {
 
     // TODO: Implement Admin Verification For This API
     // Delete a user From DB
-    app.delete("/user/:id",  async (req, res) => {
+    app.delete("/user/:id", async (req, res) => {
       const userId = req.params.id;
-      console.log(parseInt(userId));
       const query = { _id: new ObjectId(userId) };
       const result = await userCollection.deleteOne(query);
       if (result.deletedCount === 0) {
