@@ -12,7 +12,24 @@ const port = process.env.PORT || 4001;
 app.use(cors());
 app.use(express.json());
 
-// JWT configuration
+// Verify Token MiddleWare
+const verifyToken = (req, res, next) => {
+  const authorization = req.headers.authorization;
+
+  if (!authorization) {
+    return res.status(401).send({ message: "Unathorized Access" });
+  }
+
+  const token = authorization.split(" ")[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "Unathorized Access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
 
 // MongoDB configuration
 const url = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lggjuua.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -35,30 +52,60 @@ const dbConnect = async () => {
     const userCollection = client.db("GizmoMart").collection("users");
     const productCollection = client.db("GizmoMart").collection("products");
 
-    
+    // ======================= JWT Related =======================
+
+    // Admin Verify
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+      next();
+    };
+
+    // Seller Verify
+    const verifySeller = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isSeller = user?.role === "seller";
+      if (!isSeller) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+      next();
+    };
+
+    app.post("/authentication", async (req, res) => {
+      const userEmail = req.body;
+      const token = jwt.sign(userEmail, process.env.ACCESS_TOKEN, {
+        expiresIn: "30d",
+      });
+      res.send({ token });
+    });
 
     // ============================= Product Related API =============================
     // TODO: Implement Seller Verification For This API
     // Add a New Product
-    app.post("/prouct", async (req, res) => {
+    app.post("/prouct", verifyToken, verifySeller, async (req, res) => {
       const product = req.body;
       const result = await productCollection.insertOne(product);
       res.send(result);
-    })
-
+    });
 
     // Get All Product Data for a Specific Seller with Seller Email
-    app.get("/products/:email", async (req, res) => {
+    app.get("/products/:email", verifyToken, verifySeller, async (req, res) => {
       const email = req.params.email;
       const query = { sellerEmail: email };
       const products = await productCollection.find(query).toArray();
       res.send(products);
-    })
-
+    });
 
     // TODO: Implement Seller Verification
     // Delete Products From Collection
-    app.delete("/products/:id", async (req, res) => {
+    app.delete("/products/:id", verifyToken, verifySeller, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productCollection.deleteOne(query);
@@ -84,14 +131,14 @@ const dbConnect = async () => {
 
     // TODO: Implement Admin Verification For This API
     // Get The All user Data
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const user = req.body;
       const result = await userCollection.find(user).toArray();
       res.send(result);
     });
 
     // Get Single User Data With Email
-    app.get("/user/:email", async (req, res) => {
+    app.get("/user/:email", verifyToken,  async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const user = await userCollection.findOne(query);
@@ -103,7 +150,7 @@ const dbConnect = async () => {
 
     // TODO: Implement Admin Verification For This API
     // Update a User Role & Status
-    app.patch("/userUpdate/:id", async (req, res) => {
+    app.patch("/userUpdate/:id", verifyToken, verifyAdmin, async (req, res) => {
       const Id = req.params.id;
       const userId = parseInt(Id);
       const updateData = req.body;
@@ -113,23 +160,22 @@ const dbConnect = async () => {
         $set: {
           role,
           status,
-        }
-      }
-      const query = { _id: new ObjectId(Id)}
+        },
+      };
+      const query = { _id: new ObjectId(Id) };
       const result = await userCollection.updateOne(query, updateDoc);
       if (result.modifiedCount === 0) {
         return res.status(404).send({ message: "User not found!" });
       }
       res.send(result);
-      
-    })
+    });
 
     // TODO: Implement Admin Verification For This API
     // Delete a user From DB
-    app.delete("/user/:id", async (req, res) => {
+    app.delete("/user/:id", verifyToken, verifyAdmin, async (req, res) => {
       const userId = req.params.id;
       console.log(parseInt(userId));
-      const query = { _id: new ObjectId(userId)}
+      const query = { _id: new ObjectId(userId) };
       const result = await userCollection.deleteOne(query);
       if (result.deletedCount === 0) {
         return res.status(404).send({ message: "User not found!" });
