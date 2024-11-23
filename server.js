@@ -99,21 +99,55 @@ const dbConnect = async () => {
       res.send(result);
     });
 
-    // Get The All Product Data 
+    // Get The All Product Data
     app.get("/products", async (req, res) => {
-      const product = req.body;
-      const products = await productCollection.find(product).toArray();
-      res.send(products);
+      const { productName, sort, productBrand, productCategory } = req.query;
+
+      const query = {};
+
+      // Search with products name
+      if (productName) {
+        query.productName = { $regex: productName, $options: "i" };
+      }
+
+      // Search with products category
+      if (productCategory) {
+        query.productCategory = { $regex: productCategory, $options: "i" };
+      }
+
+      // Search with products brand
+      if (productBrand) {
+        query.productBrand = productBrand;
+      }
+
+      // Sort with products price
+      const sortOptions = sort === "asc" ? 1 : -1;
+
+      const products = await productCollection
+        .find(query)
+        .sort({ productPrice: sortOptions })
+        .toArray();
+
+      const productInfo = await productCollection
+        .find({}, { projection: { productCategory: 1, productBrand: 1 } })
+        .toArray();
+
+      const totalProducts = await productCollection.countDocuments(query);
+
+      const brand = [...new Set(productInfo.map(b => b.productBrand))];
+      const category = [...new Set(productInfo.map(c => c.productCategory))];
+
+      res.send({products, brand, category, totalProducts});
     });
 
     // TODO: Implement Seller Verification For This API
     // Get Single Product Data using Id
-    app.get('/product/:id', async(req, res) => {
+    app.get("/product/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const product = await productCollection.findOne(query);
       res.send(product);
-    })
+    });
 
     // TODO: Implement Seller Verification For This API
     // Get Single Product for updateing the existing product data
@@ -154,6 +188,8 @@ const dbConnect = async () => {
       const result = await productCollection.deleteOne(query);
       res.send(result);
     });
+
+    // ============================== Category Related API ===========================
 
     // ============================== User Related API ===============================
 
