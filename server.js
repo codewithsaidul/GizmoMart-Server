@@ -8,8 +8,18 @@ const app = express();
 
 const port = process.env.PORT || 4001;
 
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:4173",
+    "https://gizmo-mart-client.vercel.app",
+  ],
+  credentials: true,
+  optionSuccessStatus: 200,
+};
+
 // Middleware configuration
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Verify Token MiddleWare
@@ -101,7 +111,7 @@ const dbConnect = async () => {
     });
 
     // Get The All Product Data
-    app.get("/products", verifyToken, async (req, res) => {
+    app.get("/products", async (req, res) => {
       const {
         productName,
         sort,
