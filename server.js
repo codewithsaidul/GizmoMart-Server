@@ -13,24 +13,25 @@ app.use(cors());
 app.use(express.json());
 
 // Verify Token MiddleWare
-// const verifyToken = (req, res, next) => {
-//   const authoraization = req.header.authorization;
+const verifyToken = (req, res, next) => {
+  const authoraization = req.headers.authorization;
+  if (!authoraization || !authoraization.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .send({ message: "Access denied. No token provided." });
+  }
 
-//   if (!authoraization || !authoraization.startsWith("Bearer ")) {
-//     return res
-//       .status(401)
-//       .send({ message: "Access denied. No token provided." });
-//   }
+  const token = authoraization.split(" ")[1];
 
-//   const token = authoraization.split(" ")[1];
-//   console.log(token);
-//   jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
-//     if (err)
-//       return res.status(403).send({ message: "Access denied. Invalid token." });
-//     req.user = decoded;
-//     next();
-//   });
-// };
+  jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Access denied. Invalid token." });
+    }
+
+    req.user = decoded;
+    next();
+  });
+};
 
 // MongoDB configuration
 const url = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lggjuua.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -70,25 +71,25 @@ const dbConnect = async () => {
     // };
 
     // Seller Verify
-    // const verifySeller = async (req, res, next) => {
-    //   const email = req.decoded.email;
-    //   const query = { email: email };
-    //   const user = await userCollection.findOne(query);
-    //   const isSeller = user?.role === "seller";
-    //   if (!isSeller) {
-    //     return res.status(403).send({ message: "Forbidden Access" });
-    //   }
-    //   next();
-    // };
+    const verifySeller = async (req, res, next) => {
+      const email = req.user?.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isSeller = user?.role === "seller";
+      if (!isSeller) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+      next();
+    };
 
     //  Verify a User is authenticated ===========
-    // app.post("/authentication", async (req, res) => {
-    //   const userEmail = req.body;
-    //   const token = jwt.sign(userEmail, process.env.ACCESS_TOKEN, {
-    //     expiresIn: "30d",
-    //   });
-    //   res.send({ token });
-    // });
+    app.post("/authentication", async (req, res) => {
+      const userEmail = req.body;
+      const token = jwt.sign(userEmail, process.env.ACCESS_TOKEN, {
+        expiresIn: "30d",
+      });
+      res.send({ token });
+    });
 
     // ============================= Product Related API =============================
     // TODO: Implement Seller Verification For This API
@@ -101,14 +102,20 @@ const dbConnect = async () => {
 
     // Get The All Product Data
     app.get("/products", async (req, res) => {
-      const { productName, sort, productBrand, productCategory, page = 1, limit = 3 } = req.query;
+      const {
+        productName,
+        sort,
+        productBrand,
+        productCategory,
+        page = 1,
+        limit,
+      } = req.query;
 
       const query = {};
 
       const pageNumber = Number(page);
       const limitNumber = Number(limit);
       const skipData = (pageNumber - 1) * limitNumber;
-
 
       // Search with products name
       if (productName) {
@@ -141,13 +148,12 @@ const dbConnect = async () => {
 
       const totalProducts = await productCollection.countDocuments(query);
 
-      const brand = [...new Set(productInfo.map(b => b.productBrand))];
-      const category = [...new Set(productInfo.map(c => c.productCategory))];
+      const brand = [...new Set(productInfo.map((b) => b.productBrand))];
+      const category = [...new Set(productInfo.map((c) => c.productCategory))];
 
-      res.send({products, brand, category, totalProducts});
+      res.send({ products, brand, category, totalProducts });
     });
 
-    // TODO: Implement Seller Verification For This API
     // Get Single Product Data using Id
     app.get("/product/:id", async (req, res) => {
       const id = req.params.id;
@@ -180,7 +186,7 @@ const dbConnect = async () => {
     });
 
     // Get All Product Data for a Specific Seller with Seller Email
-    app.get("/products/:email", async (req, res) => {
+    app.get("/products/:email", verifyToken, verifySeller, async (req, res) => {
       const email = req.params.email;
       const query = { sellerEmail: email };
       const products = await productCollection.find(query).toArray();
@@ -196,7 +202,84 @@ const dbConnect = async () => {
       res.send(result);
     });
 
-    // ============================== Category Related API ===========================
+    // ============================ Cart & Wishlist ===========================
+    // Add Product on Cart ==============
+    app.patch("/carts/add", async (req, res) => {
+      const { userEmail, productId } = req.body;
+      const result = await userCollection.updateOne(
+        { email: userEmail },
+        { $addToSet: { cart: new ObjectId(String(productId)) } }
+      );
+      res.send(result);
+    });
+
+    // Remove Data From Cart
+    app.patch("/cart/remove", async (req, res) => {
+      const { userEmail, productId } = req.body;
+
+      const result = await userCollection.updateOne(
+        { email: userEmail },
+        { $pull: { cart: new ObjectId(String(productId)) } }
+      );
+      res.send(result);
+    });
+
+    // Get Data from Cart
+    app.get("/carts/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+
+      if (!user) {
+        return res.status(404).send({ message: "User not found!" });
+      }
+
+      const products = await productCollection
+        .find({ _id: { $in: user.cart || [] } })
+        .toArray();
+      res.send(products);
+    });
+
+    // Add Product on Wishlist ==============
+    app.patch("/wishlist/add", async (req, res) => {
+      const { userEmail, productId } = req.body;
+
+      const result = await userCollection.updateOne(
+      { email: userEmail },
+      {
+        $addToSet: { wishlist: new ObjectId(String(productId)) },
+      },
+    );
+
+    res.send(result);
+    });
+
+    // Remove Data From Cart
+    app.patch("/wishlist/remove", async (req, res) => {
+      const { userEmail, productId } = req.body;
+
+      const result = await userCollection.updateOne(
+        { email: userEmail },
+        { $pull: { wishlist: new ObjectId(String(productId)) } }
+      );
+      res.send(result);
+    });
+
+    // Get Data from Cart
+    app.get("/wishlists/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+
+      if (!user) {
+        return res.status(404).send({ message: "User not found!" });
+      }
+
+      const products = await productCollection
+        .find({ _id: { $in: user.wishlist || [] } })
+        .toArray();
+      res.send(products);
+    });
 
     // ============================== User Related API ===============================
 
