@@ -57,18 +57,18 @@ const dbConnect = async () => {
     // ======================= JWT Related =======================
 
     // Admin Verify
-    // const verifyAdmin = async (req, res, next) => {
-    //   const email = req.decoded.email;
-    //   const query = { email: email };
-    //   const user = await userCollection.findOne(query);
-    //   const isAdmin = user?.role === "admin";
-    //   console.log(user?.role);
-    //   console.log(isAdmin);
-    //   if (!isAdmin) {
-    //     return res.status(403).send({ message: "Forbidden Access" });
-    //   }
-    //   next();
-    // };
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.user?.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      console.log(user?.role);
+      console.log(isAdmin);
+      if (!isAdmin) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+      next();
+    };
 
     // Seller Verify
     const verifySeller = async (req, res, next) => {
@@ -92,16 +92,16 @@ const dbConnect = async () => {
     });
 
     // ============================= Product Related API =============================
-    // TODO: Implement Seller Verification For This API
+    // TODO: 
     // Add a New Product
-    app.post("/prouct", async (req, res) => {
+    app.post("/prouct", verifyToken, verifySeller, async (req, res) => {
       const product = req.body;
       const result = await productCollection.insertOne(product);
       res.send(result);
     });
 
     // Get The All Product Data
-    app.get("/products", async (req, res) => {
+    app.get("/products", verifyToken, async (req, res) => {
       const {
         productName,
         sort,
@@ -154,17 +154,18 @@ const dbConnect = async () => {
       res.send({ products, brand, category, totalProducts });
     });
 
+    // TODO:
     // Get Single Product Data using Id
-    app.get("/product/:id", async (req, res) => {
+    app.get("/product/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const product = await productCollection.findOne(query);
       res.send(product);
     });
 
-    // TODO: Implement Seller Verification For This API
+    // TODO:
     // Get Single Product for updateing the existing product data
-    app.patch("/products/update/:id", async (req, res) => {
+    app.patch("/products/update/:id", verifyToken, verifySeller, async (req, res) => {
       const id = req.params.id;
       const product = req.body;
       const query = { _id: new ObjectId(id) };
@@ -185,6 +186,7 @@ const dbConnect = async () => {
       res.send(result);
     });
 
+    // TODO:
     // Get All Product Data for a Specific Seller with Seller Email
     app.get("/products/:email", verifyToken, verifySeller, async (req, res) => {
       const email = req.params.email;
@@ -193,9 +195,9 @@ const dbConnect = async () => {
       res.send(products);
     });
 
-    // TODO: Implement Seller Verification
+    // TODO: 
     // Delete Products From Collection
-    app.delete("/products/:id", async (req, res) => {
+    app.delete("/products/:id", verifyToken, verifySeller, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productCollection.deleteOne(query);
@@ -204,7 +206,8 @@ const dbConnect = async () => {
 
     // ============================ Cart & Wishlist ===========================
     // Add Product on Cart ==============
-    app.patch("/carts/add", async (req, res) => {
+    // TODO:
+    app.patch("/carts/add", verifyToken, async (req, res) => {
       const { userEmail, productId } = req.body;
       const result = await userCollection.updateOne(
         { email: userEmail },
@@ -213,8 +216,9 @@ const dbConnect = async () => {
       res.send(result);
     });
 
+    // TODO:
     // Remove Data From Cart
-    app.patch("/cart/remove", async (req, res) => {
+    app.patch("/cart/remove", verifyToken, async (req, res) => {
       const { userEmail, productId } = req.body;
 
       const result = await userCollection.updateOne(
@@ -224,8 +228,9 @@ const dbConnect = async () => {
       res.send(result);
     });
 
+    // TODO:
     // Get Data from Cart
-    app.get("/carts/:email", async (req, res) => {
+    app.get("/carts/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const user = await userCollection.findOne(query);
@@ -240,8 +245,9 @@ const dbConnect = async () => {
       res.send(products);
     });
 
+    // TODO:
     // Add Product on Wishlist ==============
-    app.patch("/wishlist/add", async (req, res) => {
+    app.patch("/wishlist/add", verifyToken, async (req, res) => {
       const { userEmail, productId } = req.body;
 
       const result = await userCollection.updateOne(
@@ -254,8 +260,9 @@ const dbConnect = async () => {
     res.send(result);
     });
 
+    // TODO:
     // Remove Data From Cart
-    app.patch("/wishlist/remove", async (req, res) => {
+    app.patch("/wishlist/remove", verifyToken, async (req, res) => {
       const { userEmail, productId } = req.body;
 
       const result = await userCollection.updateOne(
@@ -265,8 +272,9 @@ const dbConnect = async () => {
       res.send(result);
     });
 
+    // TODO:
     // Get Data from Cart
-    app.get("/wishlists/:email", async (req, res) => {
+    app.get("/wishlists/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const user = await userCollection.findOne(query);
@@ -298,17 +306,17 @@ const dbConnect = async () => {
       res.send(result);
     });
 
-    // TODO: Implement Admin Verification For This API
+    // TODO: 
     // Get The All user Data
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const user = req.body;
       const result = await userCollection.find(user).toArray();
       res.send(result);
     });
 
-    // TODO: Implement Admin Verification For This API
+    // TODO: 
     // Get Single User Data With Email
-    app.get("/user/:email", async (req, res) => {
+    app.get("/user/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const user = await userCollection.findOne(query);
@@ -318,9 +326,9 @@ const dbConnect = async () => {
       res.send(user);
     });
 
-    // TODO: Implement Admin Verification For This API
+    // TODO: 
     // Update a User Role & Status
-    app.patch("/userUpdate/:id", async (req, res) => {
+    app.patch("/userUpdate/:id", verifyToken, verifyAdmin, async (req, res) => {
       const Id = req.params.id;
       const userId = parseInt(Id);
       const updateData = req.body;
@@ -340,9 +348,9 @@ const dbConnect = async () => {
       res.send(result);
     });
 
-    // TODO: Implement Admin Verification For This API
+    // TODO:
     // Delete a user From DB
-    app.delete("/user/:id", async (req, res) => {
+    app.delete("/user/:id", verifyToken, verifyAdmin, async (req, res) => {
       const userId = req.params.id;
       const query = { _id: new ObjectId(userId) };
       const result = await userCollection.deleteOne(query);
