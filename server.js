@@ -101,9 +101,14 @@ const dbConnect = async () => {
 
     // Get The All Product Data
     app.get("/products", async (req, res) => {
-      const { productName, sort, productBrand, productCategory } = req.query;
+      const { productName, sort, productBrand, productCategory, page = 1, limit = 3 } = req.query;
 
       const query = {};
+
+      const pageNumber = Number(page);
+      const limitNumber = Number(limit);
+      const skipData = (pageNumber - 1) * limitNumber;
+
 
       // Search with products name
       if (productName) {
@@ -125,6 +130,8 @@ const dbConnect = async () => {
 
       const products = await productCollection
         .find(query)
+        .skip(skipData)
+        .limit(limitNumber)
         .sort({ productPrice: sortOptions })
         .toArray();
 
